@@ -103,8 +103,8 @@ body::before {
 }
 
 .board {
-  width: 320px;
-  height: 320px;
+  /* width: 320px; */
+  /* height: 320px; */
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   grid-template-rows: repeat(4, 1fr);
@@ -153,8 +153,8 @@ body::before {
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
-  width: 500px;
-  height: 320px;
+  /* width: 500px; */
+  /* height: 320px; */
   align-content: flex-start;
   min-height: 200px;
   border-radius: 15px;

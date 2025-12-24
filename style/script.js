@@ -1,59 +1,110 @@
-document.addEventListener("DOMContentLoaded", function () {
-  const audio = document.getElementById("sound");
-  let isPlayed = false;
-
-  function playAudioOnce() {
-    if (!isPlayed) {
-      audio.play().catch((e) => {
-        console.warn("Không thể phát nhạc tự động:", e);
-      });
-      isPlayed = true;
-    }
-  }
-
-  document.addEventListener("click", playAudioOnce, { once: true });
-  document.addEventListener("touchstart", playAudioOnce, { once: true });
-});
-
 const board = document.getElementById("puzzle-board");
 const piecesContainer = document.getElementById("pieces-container");
 const resetBtn = document.getElementById("reset");
 const progressFill = document.getElementById("progress-fill");
 const progressText = document.getElementById("progress-text");
 const successAnimation = document.getElementById("success-animation");
+const imgSrc = document.getElementById("imgSrc");
 
-const imageSrc = "./style/AnhGhep.jpg"; 
+/* =======================
+   DANH SÁCH ẢNH
+======================= */
+const images = [
+  "./style/AnhGhep.jpg",
+  "./style/AnhGhep2.jpg",
+  "./style/AnhGhep3.jpg"
+];
+
+let currentImageIndex = 0;
 const pieceCount = 4;
 let selectedPiece = null;
 
-function startGame() {
-  updateProgress();
+/* SIZE ĐỘNG */
+let boardWidth = 0;
+let boardHeight = 0;
+let pieceWidth = 0;
+let pieceHeight = 0;
+
+/* =======================
+   INIT GAME
+======================= */
+loadImageAndStart();
+
+/* =======================
+   LOAD ẢNH & TÍNH SIZE
+======================= */
+function loadImageAndStart() {
+  const img = new Image();
+  img.src = images[currentImageIndex];
+  imgSrc.src = images[currentImageIndex];
+
+  img.onload = () => {
+    calculateBoardSize(img);
+    createBoard();
+    createPieces();
+    startGame();
+  };
 }
 
+/* =======================
+   TÍNH SIZE BOARD THEO ẢNH
+======================= */
+function calculateBoardSize(img) {
+  const maxWidth = Math.min(window.innerWidth * 0.7, 500);
+  const maxHeight = Math.min(window.innerHeight * 0.6, 400);
+
+  let scale = Math.min(
+    maxWidth / img.naturalWidth,
+    maxHeight / img.naturalHeight
+  );
+
+  boardWidth = img.naturalWidth * scale;
+  boardHeight = img.naturalHeight * scale;
+
+  pieceWidth = boardWidth / pieceCount;
+  pieceHeight = boardHeight / pieceCount;
+
+  // board.style.width = `${boardWidth}px`;
+  // board.style.height = `${boardHeight}px`;
+}
+
+/* =======================
+   TẠO BOARD
+======================= */
 function createBoard() {
   board.innerHTML = "";
+
   for (let i = 0; i < pieceCount * pieceCount; i++) {
     const slot = document.createElement("div");
     slot.classList.add("slot");
     slot.dataset.index = i;
 
-    slot.addEventListener("click", () => {
-      if (selectedPiece) {
-        if (slot.firstChild) {
-          piecesContainer.appendChild(slot.firstChild);
-        }
-        slot.appendChild(selectedPiece);
-        selectedPiece.classList.remove("selected");
-        selectedPiece = null;
-        updateProgress();
-        checkWin();
+    slot.style.width = `${pieceWidth}px`;
+    slot.style.height = `${pieceHeight}px`;
+
+    slot.addEventListener("dragover", (e) => e.preventDefault());
+
+    slot.addEventListener("drop", () => {
+      if (!selectedPiece) return;
+
+      if (slot.firstChild) {
+        piecesContainer.appendChild(slot.firstChild);
       }
+
+      slot.appendChild(selectedPiece);
+      selectedPiece = null;
+
+      updateProgress();
+      checkWin();
     });
 
     board.appendChild(slot);
   }
 }
 
+/* =======================
+   TRỘN
+======================= */
 function shuffle(array) {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -62,97 +113,99 @@ function shuffle(array) {
   return array;
 }
 
+/* =======================
+   TẠO PIECE
+======================= */
 function createPieces() {
   piecesContainer.innerHTML = "";
+  const imageSrc = images[currentImageIndex];
+
   const indices = shuffle([...Array(pieceCount * pieceCount).keys()]);
+
   indices.forEach((i) => {
     const piece = document.createElement("div");
     piece.classList.add("piece");
     piece.dataset.index = i;
+    piece.draggable = true;
 
     const x = i % pieceCount;
     const y = Math.floor(i / pieceCount);
-    piece.style.backgroundImage = `url(${imageSrc})`;
-    
-    const pieceSize = getPieceSize();
-    const boardSize = getBoardSize();
-    piece.style.backgroundPosition = `-${x * pieceSize}px -${y * pieceSize}px`;
-    piece.style.backgroundSize = `${boardSize}px ${boardSize}px`;
 
-    piece.addEventListener("click", () => {
-      if (selectedPiece) {
-        selectedPiece.classList.remove("selected");
-      }
+    piece.style.width = `${pieceWidth}px`;
+    piece.style.height = `${pieceHeight}px`;
+    piece.style.backgroundImage = `url(${imageSrc})`;
+    piece.style.backgroundSize = `${boardWidth}px ${boardHeight}px`;
+    piece.style.backgroundPosition = `-${x * pieceWidth}px -${y * pieceHeight}px`;
+
+    piece.addEventListener("dragstart", () => {
       selectedPiece = piece;
-      piece.classList.add("selected");
+    });
+
+    piece.addEventListener("dragend", () => {
+      selectedPiece = null;
     });
 
     piecesContainer.appendChild(piece);
   });
 }
 
-function getPieceSize() {
-  return window.innerWidth <= 360 ? 45 : 
-          window.innerWidth <= 480 ? 50 : 
-          window.innerWidth <= 768 ? 60 : 70;
-}
-
-function getBoardSize() {
-  return window.innerWidth <= 360 ? 180 : 
-          window.innerWidth <= 480 ? 200 : 
-          window.innerWidth <= 768 ? 240 : 280;
+/* =======================
+   PROGRESS
+======================= */
+function startGame() {
+  updateProgress();
 }
 
 function updateProgress() {
   const slots = document.querySelectorAll(".slot");
   let correct = 0;
+
   slots.forEach((slot, i) => {
-    const piece = slot.firstElementChild;
-    if (piece && piece.dataset.index == i) {
-      correct++;
-    }
+    const piece = slot.firstChild;
+    if (piece && piece.dataset.index == i) correct++;
   });
-  
-  const percentage = Math.round((correct / (pieceCount * pieceCount)) * 100);
-  progressFill.style.width = `${percentage}%`;
-  progressText.textContent = `${percentage}%`;
+
+  const percent = Math.round(
+    (correct / (pieceCount * pieceCount)) * 100
+  );
+
+  progressFill.style.width = `${percent}%`;
+  progressText.textContent = `${percent}%`;
 }
 
 function checkWin() {
-  const slots = document.querySelectorAll(".slot");
-  let correct = 0;
-  slots.forEach((slot, i) => {
-    const piece = slot.firstElementChild;
-    if (piece && piece.dataset.index == i) {
-      correct++;
-    }
-  });
-
-  if (correct === pieceCount * pieceCount) {
-    setTimeout(() => {
-      showSuccessModal();
-    }, 500);
+  if (
+    document.querySelectorAll(".slot > .piece").length ===
+    pieceCount * pieceCount
+  ) {
+    setTimeout(showSuccessModal, 400);
   }
 }
 
+/* =======================
+   MODAL
+======================= */
 function showSuccessModal() {
   successAnimation.classList.add("show");
 }
 
 function closeSuccessModal() {
   successAnimation.classList.remove("show");
+
+  currentImageIndex++;
+  if (currentImageIndex >= images.length) currentImageIndex = 0;
+
+  loadImageAndStart();
 }
 
+/* =======================
+   RESET (KHÔNG ĐỔI ẢNH)
+======================= */
 resetBtn.addEventListener("click", () => {
-  createBoard();
-  createPieces();
-  startGame();
+  loadImageAndStart();
 });
 
-window.addEventListener("resize", () => {
-  createPieces();
-});
-
-createBoard();
-createPieces();
-startGame();
+/* =======================
+   RESIZE
+======================= */
+window.addEventListener("resize", loadImageAndStart);
